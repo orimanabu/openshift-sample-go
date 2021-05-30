@@ -17,6 +17,7 @@ import (
 
 func main() {
 	http.HandleFunc("/", hello)
+	http.HandleFunc("/oneline", oneline)
 	http.ListenAndServe(":8080", nil)
 }
 
@@ -56,6 +57,21 @@ func getProcesses() {
 	}
 }
 
+func getTimestamp() string {
+	t := time.Now()
+	const layout = "2006-01-02 15:04:05"
+	return fmt.Sprintf("%s", t.Format(layout))
+}
+
+func getOnelineLog(r *http.Request) string {
+	logstr := fmt.Sprintf("%s: Hello, World: Host=%s, LocalAddr=%s, RemoteAddr=%s", getTimestamp(), r.Host, getLocalIP(), r.RemoteAddr)
+	fwdAddr := r.Header.Get("X-Forwarded-For")
+	if fwdAddr != "" {
+		logstr = fmt.Sprintf("%s, X-Forwarded-For=%s", logstr, fwdAddr)
+	}
+	return logstr
+}
+
 func hello(w http.ResponseWriter, r *http.Request) {
 	h := r.Header
 	keys := make([]string, len(h))
@@ -73,6 +89,7 @@ func hello(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("os.Hostname(): %v\n", err)
 		return
 	}
+	fmt.Fprintf(w, "  Timestamp: %s\n", getTimestamp())
 	fmt.Fprintf(w, "  Hostname: %s\n", hostname)
 	fmt.Fprintf(w, "  LocalAddress: %s\n", getLocalIP())
 
@@ -93,13 +110,11 @@ func hello(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "  Host: %s\n", r.Host)
 	fmt.Fprintf(w, "  RemoteAddress: %s\n", r.RemoteAddr)
 
-	t := time.Now()
-	const layout = "2006-01-02 15:04:05"
-	logstr := fmt.Sprintf("%s: Hello, World: Host=%s, LocalAddr=%s, RemoteAddr=%s", t.Format(layout), r.Host, getLocalIP(), r.RemoteAddr)
-	fwdAddr := r.Header.Get("X-Forwarded-For")
-	if fwdAddr != "" {
-		logstr = fmt.Sprintf("%s, X-Forwarded-For=%s", logstr, fwdAddr)
-	}
-	fmt.Printf("%s\n", logstr)
+	fmt.Printf("%s\n", getOnelineLog(r))
 	//getProcesses()
+}
+
+func oneline(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "%s\n", getOnelineLog(r))
+	fmt.Printf("%s\n", getOnelineLog(r))
 }
