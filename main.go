@@ -95,7 +95,7 @@ func hello(w http.ResponseWriter, r *http.Request) {
 
 	t := time.Now()
 	const layout = "2006-01-02 15:04:05"
-	logstr := fmt.Sprintf("%s: Hello, World: Host=%s, RemoteAddr=%s", t.Format(layout), r.Host, r.RemoteAddr)
+	logstr := fmt.Sprintf("%s: Hello, World: Host=%s, LocalAddr=%s, RemoteAddr=%s", t.Format(layout), r.Host, getLocalIP(), r.RemoteAddr)
 	fwdAddr := r.Header.Get("X-Forwarded-For")
 	if fwdAddr != "" {
 		logstr = fmt.Sprintf("%s, X-Forwarded-For=%s", logstr, fwdAddr)
