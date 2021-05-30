@@ -16,8 +16,9 @@ import (
 )
 
 func main() {
-	http.HandleFunc("/", hello)
-	http.HandleFunc("/oneline", oneline)
+	http.HandleFunc("/", helloHandler)
+	http.HandleFunc("/oneline", onelineHandler)
+	http.HandleFunc("/ps", psHandler)
 	http.ListenAndServe(":8080", nil)
 }
 
@@ -72,7 +73,8 @@ func getOnelineLog(r *http.Request) string {
 	return logstr
 }
 
-func hello(w http.ResponseWriter, r *http.Request) {
+func helloHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("%s <helloHandler>\n", getOnelineLog(r))
 	h := r.Header
 	keys := make([]string, len(h))
 	i := 0
@@ -109,12 +111,21 @@ func hello(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Fprintf(w, "  Host: %s\n", r.Host)
 	fmt.Fprintf(w, "  RemoteAddress: %s\n", r.RemoteAddr)
-
-	fmt.Printf("%s\n", getOnelineLog(r))
-	//getProcesses()
 }
 
-func oneline(w http.ResponseWriter, r *http.Request) {
+func onelineHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("%s <onelineHandler>\n", getOnelineLog(r))
 	fmt.Fprintf(w, "%s\n", getOnelineLog(r))
-	fmt.Printf("%s\n", getOnelineLog(r))
+}
+
+func psHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("%s <psHandler>\n", getOnelineLog(r))
+
+	processes, err := ps.Processes()
+	if err != nil {
+		fmt.Fprintf(w, "ps.Processes(): %v\n", err)
+	}
+	for _, p := range processes {
+		fmt.Fprintf(w, "* %s\t%s\n", p.Executable(), getProcCmdArgs(p.(*ps.UnixProcess)))
+	}
 }
