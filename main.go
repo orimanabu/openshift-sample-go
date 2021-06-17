@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -13,13 +14,64 @@ import (
 
 	"github.com/jackpal/gateway"
 	"github.com/mitchellh/go-ps"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+var (
+	httpReqs = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "http_requests_total",
+		Help: "How many HTTP requests processed, partitioned by status code and HTTP method.",
+	})
+	requestCount = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "http_request_count_total",
+		Help: "Counter of HTTP requests made.",
+	}, []string{"code", "method"})
+	requestDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "http_request_duration_seconds",
+		Help:    "A histogram of latencies for requests.",
+		Buckets: append([]float64{0.000001, 0.001, 0.003}, prometheus.DefBuckets...),
+	}, []string{"code", "method"})
+	responseSize = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "http_response_size_bytes",
+		Help:    "A histogram of response sizes for requests.",
+		Buckets: []float64{0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20},
+	}, []string{"code", "method"})
+)
+
+func init() {
+	log.Printf("initializing this app...")
+	prometheus.MustRegister(httpReqs)
+	prometheus.MustRegister(requestCount)
+	prometheus.MustRegister(requestDuration)
+	prometheus.MustRegister(responseSize)
+}
+
 func main() {
-	http.HandleFunc("/", helloHandler)
+	//http.HandleFunc("/", helloHandler)
+	// Instrument helloHandler
+	helloHandler := http.HandlerFunc(doHelloHandler)
+	wrappedHelloHandler := promhttp.InstrumentHandlerCounter(
+		requestCount,
+		promhttp.InstrumentHandlerDuration(
+			requestDuration,
+			promhttp.InstrumentHandlerResponseSize(
+				responseSize,
+				helloHandler),
+		),
+	)
+	http.Handle("/", wrappedHelloHandler)
 	http.HandleFunc("/oneline", onelineHandler)
 	http.HandleFunc("/ps", psHandler)
-	http.ListenAndServe(":8080", nil)
+
+	// serve metrics.
+	log.Printf("serving metrics at: %s", ":9090")
+	go http.ListenAndServe(":9090", promhttp.Handler())
+
+	// serve our handlers.
+	if err := http.ListenAndServe(":8080", nil); err != nil {
+		log.Panicf("error while serving: %s", err)
+	}
 }
 
 func getLocalIP() string {
@@ -60,12 +112,12 @@ func getProcesses() {
 
 func getTimestamp() string {
 	t := time.Now()
-	const layout = "2006-01-02 15:04:05"
+	const layout = "2006/01/02 15:04:05"
 	return fmt.Sprintf("%s", t.Format(layout))
 }
 
 func getOnelineLog(r *http.Request) string {
-	logstr := fmt.Sprintf("%s: Hello, World: Host=%s, LocalAddr=%s, RemoteAddr=%s", getTimestamp(), r.Host, getLocalIP(), r.RemoteAddr)
+	logstr := fmt.Sprintf("%s Hello, World: Host=%s, LocalAddr=%s, RemoteAddr=%s", getTimestamp(), r.Host, getLocalIP(), r.RemoteAddr)
 	fwdAddr := r.Header.Get("X-Forwarded-For")
 	if fwdAddr != "" {
 		logstr = fmt.Sprintf("%s, X-Forwarded-For=%s", logstr, fwdAddr)
@@ -73,7 +125,7 @@ func getOnelineLog(r *http.Request) string {
 	return logstr
 }
 
-func helloHandler(w http.ResponseWriter, r *http.Request) {
+func doHelloHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("%s <helloHandler>\n", getOnelineLog(r))
 	h := r.Header
 	keys := make([]string, len(h))
@@ -111,11 +163,15 @@ func helloHandler(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Fprintf(w, "  Host: %s\n", r.Host)
 	fmt.Fprintf(w, "  RemoteAddress: %s\n", r.RemoteAddr)
+
+	httpReqs.Inc()
 }
 
 func onelineHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("%s <onelineHandler>\n", getOnelineLog(r))
 	fmt.Fprintf(w, "%s\n", getOnelineLog(r))
+
+	httpReqs.Inc()
 }
 
 func psHandler(w http.ResponseWriter, r *http.Request) {
@@ -128,4 +184,6 @@ func psHandler(w http.ResponseWriter, r *http.Request) {
 	for _, p := range processes {
 		fmt.Fprintf(w, "* %s\t%s\n", p.Executable(), getProcCmdArgs(p.(*ps.UnixProcess)))
 	}
+
+	httpReqs.Inc()
 }
