@@ -19,6 +19,7 @@ import (
 )
 
 var (
+	version  = "1.1"
 	httpReqs = prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "http_requests_total",
 		Help: "How many HTTP requests processed, partitioned by status code and HTTP method.",
@@ -63,6 +64,7 @@ func main() {
 	http.Handle("/", wrappedHelloHandler)
 	http.HandleFunc("/oneline", onelineHandler)
 	http.HandleFunc("/ps", psHandler)
+	http.HandleFunc("/version", versionHandler)
 
 	// serve metrics.
 	log.Printf("serving metrics at: %s", ":9090")
@@ -170,6 +172,13 @@ func doHelloHandler(w http.ResponseWriter, r *http.Request) {
 func onelineHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("%s <onelineHandler>\n", getOnelineLog(r))
 	fmt.Fprintf(w, "%s\n", getOnelineLog(r))
+
+	httpReqs.Inc()
+}
+
+func versionHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("%s <versionHandler>\n", getOnelineLog(r))
+	fmt.Fprintf(w, "%s\n", version)
 
 	httpReqs.Inc()
 }
