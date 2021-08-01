@@ -19,7 +19,7 @@ import (
 )
 
 var (
-	version  = "1.1"
+	version  = "1.2"
 	httpReqs = prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "http_requests_total",
 		Help: "How many HTTP requests processed, partitioned by status code and HTTP method.",
