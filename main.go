@@ -92,8 +92,8 @@ func getLocalIP() string {
 	return ""
 }
 
-func getProcCmdArgs(p *ps.UnixProcess) []string {
-	cmdPath := fmt.Sprintf("/proc/%d/cmdline", p.Pid())
+func getProcCmdArgs(p *ps.Process) []string {
+	cmdPath := fmt.Sprintf("/proc/%d/cmdline", (*p).Pid())
 	data, err := ioutil.ReadFile(cmdPath)
 	if err != nil {
 		return nil
@@ -108,7 +108,7 @@ func getProcesses() {
 		fmt.Printf("ps.Processes(): %v\n", err)
 	}
 	for _, p := range processes {
-		fmt.Printf("* %s\t%s\n", p.Executable(), getProcCmdArgs(p.(*ps.UnixProcess)))
+		fmt.Printf("* %s\t%s\n", p.Executable(), getProcCmdArgs(&p))
 	}
 }
 
@@ -191,7 +191,7 @@ func psHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "ps.Processes(): %v\n", err)
 	}
 	for _, p := range processes {
-		fmt.Fprintf(w, "* %s\t%s\n", p.Executable(), getProcCmdArgs(p.(*ps.UnixProcess)))
+		fmt.Fprintf(w, "* %s\t%s\n", p.Executable(), getProcCmdArgs(&p))
 	}
 
 	httpReqs.Inc()
