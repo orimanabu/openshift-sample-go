@@ -68,7 +68,11 @@ func main() {
 
 	// serve metrics.
 	log.Printf("serving metrics at: %s", ":9090")
-	go http.ListenAndServe(":9090", promhttp.Handler())
+	go func() {
+		mux := http.NewServeMux()
+		mux.Handle("/metrics", promhttp.Handler())
+		http.ListenAndServe(":9090", mux)
+	}()
 
 	// serve our handlers.
 	if err := http.ListenAndServe(":8080", nil); err != nil {
