@@ -129,6 +129,7 @@ func getOnelineLog(r *http.Request) string {
 
 func doHelloHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("%s <helloHandler>\n", getOnelineLog(r))
+	fmt.Fprintf(os.Stderr, "(STDERR) %s <helloHandler>\n", getOnelineLog(r))
 	h := r.Header
 	keys := make([]string, len(h))
 	i := 0
@@ -171,6 +172,7 @@ func doHelloHandler(w http.ResponseWriter, r *http.Request) {
 
 func onelineHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("%s <onelineHandler>\n", getOnelineLog(r))
+	fmt.Fprintf(os.Stderr, "(STDERR) %s <onelineHandler>\n", getOnelineLog(r))
 	fmt.Fprintf(w, "%s\n", getOnelineLog(r))
 
 	httpReqs.Inc()
